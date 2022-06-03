@@ -118,6 +118,10 @@ add_executable(points_concat_filter
   nodes/points_concat_filter/points_concat_filter.cpp
 )
 
+add_executable(points_concat_filter_rgb
+  nodes/points_concat_filter/points_concat_filter_rgb.cpp
+)
+
 target_include_directories(points_concat_filter PRIVATE
   ${PCL_INCLUDE_DIRS}
 )
