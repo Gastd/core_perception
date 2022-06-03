@@ -524,7 +524,9 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     anh_ndt.setStepSize(step_size);
     anh_ndt.setResolution(ndt_res);
     anh_ndt.setMaximumIterations(max_iter);
-    anh_ndt.setInputSource(filtered_scan_ptr);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr anh_filtered_scan_ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloudXYZRGBtoXYZI(*filtered_scan_ptr, *anh_filtered_scan_ptr);
+    anh_ndt.setInputSource(anh_filtered_scan_ptr);
   }
 #ifdef CUDA_FOUND
   else if (_method_type == MethodType::PCL_ANH_GPU)
