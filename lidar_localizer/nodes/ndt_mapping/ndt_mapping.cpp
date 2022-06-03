@@ -100,15 +100,15 @@ static double current_velocity_imu_x = 0.0;
 static double current_velocity_imu_y = 0.0;
 static double current_velocity_imu_z = 0.0;
 
-static pcl::PointCloud<pcl::PointXYZI> map;
+static pcl::PointCloud<pcl::PointXYZRGB> map;
 
-static pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> ndt;
-static cpu::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> anh_ndt;
+static pcl::NormalDistributionsTransform<pcl::PointXYZRGB, pcl::PointXYZRGB> ndt;
+static cpu::NormalDistributionsTransform<pcl::PointXYZRGB, pcl::PointXYZRGB> anh_ndt;
 #ifdef CUDA_FOUND
 static gpu::GNormalDistributionsTransform anh_gpu_ndt;
 #endif
 #ifdef USE_PCL_OPENMP
-static pcl_omp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> omp_ndt;
+static pcl_omp::NormalDistributionsTransform<pcl::PointXYZRGB, pcl::PointXYZRGB> omp_ndt;
 #endif
 
 // Default values
@@ -192,8 +192,8 @@ static void output_callback(const autoware_config_msgs::ConfigNDTMappingOutput::
   std::cout << "filter_res: " << filter_res << std::endl;
   std::cout << "filename: " << filename << std::endl;
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZI>(map));
-  pcl::PointCloud<pcl::PointXYZI>::Ptr map_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZRGB>(map));
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr map_filtered(new pcl::PointCloud<pcl::PointXYZRGB>());
   map_ptr->header.frame_id = "map";
   map_filtered->header.frame_id = "map";
   sensor_msgs::PointCloud2::Ptr map_msg_ptr(new sensor_msgs::PointCloud2);
@@ -206,7 +206,7 @@ static void output_callback(const autoware_config_msgs::ConfigNDTMappingOutput::
   }
   else
   {
-    pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_filter;
+    pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_filter;
     voxel_grid_filter.setLeafSize(filter_res, filter_res, filter_res);
     voxel_grid_filter.setInputCloud(map_ptr);
     voxel_grid_filter.filter(*map_filtered);
@@ -453,10 +453,10 @@ static void imu_callback(const sensor_msgs::Imu::Ptr& input)
 static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 {
   double r;
-  pcl::PointXYZI p;
-  pcl::PointCloud<pcl::PointXYZI> tmp, scan;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_scan_ptr(new pcl::PointCloud<pcl::PointXYZI>());
-  pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_scan_ptr(new pcl::PointCloud<pcl::PointXYZI>());
+  pcl::PointXYZRGB p;
+  pcl::PointCloud<pcl::PointXYZRGB> tmp, scan;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr filtered_scan_ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_scan_ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
   tf::Quaternion q;
 
   Eigen::Matrix4f t_localizer(Eigen::Matrix4f::Identity());
@@ -468,12 +468,14 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 
   pcl::fromROSMsg(*input, tmp);
 
-  for (pcl::PointCloud<pcl::PointXYZI>::const_iterator item = tmp.begin(); item != tmp.end(); item++)
+  for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator item = tmp.begin(); item != tmp.end(); item++)
   {
     p.x = (double)item->x;
     p.y = (double)item->y;
     p.z = (double)item->z;
-    p.intensity = (double)item->intensity;
+    p.r = (double)item->r;
+    p.g = (double)item->g;
+    p.b = (double)item->b;
 
     r = sqrt(pow(p.x, 2.0) + pow(p.y, 2.0));
     if (min_scan_range < r && r < max_scan_range)
@@ -482,7 +484,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     }
   }
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZI>(scan));
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan_ptr(new pcl::PointCloud<pcl::PointXYZRGB>(scan));
 
   // Add initial point cloud to velodyne_map
   if (initial_scan_loaded == 0)
@@ -493,12 +495,12 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   }
 
   // Apply voxelgrid filter
-  pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_filter;
+  pcl::VoxelGrid<pcl::PointXYZRGB> voxel_grid_filter;
   voxel_grid_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
   voxel_grid_filter.setInputCloud(scan_ptr);
   voxel_grid_filter.filter(*filtered_scan_ptr);
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZI>(map));
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZRGB>(map));
 
   if (_method_type == MethodType::PCL_GENERIC)
   {
@@ -593,7 +595,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
 
   t4_start = ros::Time::now();
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
   if (_method_type == MethodType::PCL_GENERIC)
   {
