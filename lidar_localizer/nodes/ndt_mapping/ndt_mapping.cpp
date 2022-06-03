@@ -43,7 +43,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl_conversions/point_types_conversion.h>
+#include <pcl/point_types_conversion.h>
 
 #include <ndt_cpu/NormalDistributionsTransform.h>
 #include <pcl/registration/ndt.h>
@@ -503,10 +503,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   voxel_grid_filter.filter(*filtered_scan_ptr);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZRGB>(map));
+  pcl::PointCloud<pcl::PointXYZI>::Ptr anh_map_ptr;
   if (_method_type == MethodType::PCL_ANH)
   {
     pcl::PointCloudXYZRGBtoXYZI(map, anh_map);
-    pcl::PointCloud<pcl::PointXYZI>::Ptr anh_map_ptr(new pcl::PointCloud<pcl::PointXYZI>(anh_map));
+    anh_map_ptr = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>(anh_map));
   }
 
   if (_method_type == MethodType::PCL_GENERIC)
