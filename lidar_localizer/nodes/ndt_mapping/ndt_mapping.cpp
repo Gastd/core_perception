@@ -43,6 +43,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_conversions/point_types_conversion.h>
 
 #include <ndt_cpu/NormalDistributionsTransform.h>
 #include <pcl/registration/ndt.h>
@@ -101,9 +102,10 @@ static double current_velocity_imu_y = 0.0;
 static double current_velocity_imu_z = 0.0;
 
 static pcl::PointCloud<pcl::PointXYZRGB> map;
+static pcl::PointCloud<pcl::PointXYZI> anh_map;
 
 static pcl::NormalDistributionsTransform<pcl::PointXYZRGB, pcl::PointXYZRGB> ndt;
-static cpu::NormalDistributionsTransform<pcl::PointXYZRGB, pcl::PointXYZRGB> anh_ndt;
+static cpu::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> anh_ndt;
 #ifdef CUDA_FOUND
 static gpu::GNormalDistributionsTransform anh_gpu_ndt;
 #endif
@@ -501,6 +503,11 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
   voxel_grid_filter.filter(*filtered_scan_ptr);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr map_ptr(new pcl::PointCloud<pcl::PointXYZRGB>(map));
+  if (_method_type == MethodType::PCL_ANH)
+  {
+    pcl::PointCloudXYZRGBtoXYZI(map, anh_map);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr anh_map_ptr(new pcl::PointCloud<pcl::PointXYZI>(anh_map));
+  }
 
   if (_method_type == MethodType::PCL_GENERIC)
   {
@@ -545,7 +552,7 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
     if (_method_type == MethodType::PCL_GENERIC)
       ndt.setInputTarget(map_ptr);
     else if (_method_type == MethodType::PCL_ANH)
-      anh_ndt.setInputTarget(map_ptr);
+      anh_ndt.setInputTarget(anh_map_ptr);
 #ifdef CUDA_FOUND
     else if (_method_type == MethodType::PCL_ANH_GPU)
       anh_gpu_ndt.setInputTarget(map_ptr);
@@ -765,10 +772,10 @@ static void points_callback(const sensor_msgs::PointCloud2::ConstPtr& input)
       ndt.setInputTarget(map_ptr);
     else if (_method_type == MethodType::PCL_ANH)
     {
-      if (_incremental_voxel_update == true)
-        anh_ndt.updateVoxelGrid(transformed_scan_ptr);
-      else
-        anh_ndt.setInputTarget(map_ptr);
+      // if (_incremental_voxel_update == true)
+      //   anh_ndt.updateVoxelGrid(transformed_scan_ptr);
+      // else
+        anh_ndt.setInputTarget(anh_map_ptr);
     }
 #ifdef CUDA_FOUND
     else if (_method_type == MethodType::PCL_ANH_GPU)
