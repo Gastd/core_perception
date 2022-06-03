@@ -393,6 +393,56 @@ void GRegistration::setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input)
 
 
 //Set input MAP data
+void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZRGB>::Ptr input)
+{
+	if (input->size() > 0) {
+		target_points_number_ = input->size();
+
+		pcl::PointXYZRGB *tmp;
+
+		checkCudaErrors(cudaMalloc(&tmp, sizeof(pcl::PointXYZRGB) * target_points_number_));
+
+		pcl::PointXYZRGB *host_tmp = input->points.data();
+
+#ifndef __aarch64__
+		checkCudaErrors(cudaHostRegister(host_tmp, sizeof(pcl::PointXYZRGB) * target_points_number_, cudaHostRegisterDefault));
+#endif
+
+		checkCudaErrors(cudaMemcpy(tmp, host_tmp, sizeof(pcl::PointXYZRGB) * target_points_number_, cudaMemcpyHostToDevice));
+
+		if (target_x_ != NULL) {
+			checkCudaErrors(cudaFree(target_x_));
+			target_x_ = NULL;
+		}
+
+		if (target_y_ != NULL) {
+			checkCudaErrors(cudaFree(target_y_));
+			target_y_ = NULL;
+		}
+
+		if (target_z_ != NULL) {
+			checkCudaErrors(cudaFree(target_z_));
+			target_z_ = NULL;
+		}
+
+		checkCudaErrors(cudaMalloc(&target_x_, sizeof(float) * target_points_number_));
+		checkCudaErrors(cudaMalloc(&target_y_, sizeof(float) * target_points_number_));
+		checkCudaErrors(cudaMalloc(&target_z_, sizeof(float) * target_points_number_));
+
+		int block_x = (target_points_number_ > BLOCK_SIZE_X) ? BLOCK_SIZE_X : target_points_number_;
+		int grid_x = (target_points_number_ - 1) / block_x + 1;
+
+		convertInput<pcl::PointXYZRGB><<<grid_x, block_x>>>(tmp, target_x_, target_y_, target_z_, target_points_number_);
+		checkCudaErrors(cudaGetLastError());
+		checkCudaErrors(cudaDeviceSynchronize());
+
+#ifndef __aarch64__
+		checkCudaErrors(cudaHostUnregister(host_tmp));
+#endif
+		checkCudaErrors(cudaFree(tmp));
+	}
+}
+
 void GRegistration::setInputTarget(pcl::PointCloud<pcl::PointXYZI>::Ptr input)
 {
 	if (input->size() > 0) {
