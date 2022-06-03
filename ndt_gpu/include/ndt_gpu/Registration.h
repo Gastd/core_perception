@@ -32,6 +32,7 @@ public:
 
   /* Set input Scanned point cloud.
    * Copy input points from the main memory to the GPU memory */
+  void setInputSource(pcl::PointCloud<pcl::PointXYZRGB>::Ptr input);
   void setInputSource(pcl::PointCloud<pcl::PointXYZI>::Ptr input);
   void setInputSource(pcl::PointCloud<pcl::PointXYZ>::Ptr input);
 
